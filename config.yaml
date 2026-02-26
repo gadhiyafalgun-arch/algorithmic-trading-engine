@@ -1,0 +1,63 @@
+# ============================================
+# ALGO TRADING ENGINE — Configuration
+# ============================================
+
+project:
+  name: "Algo Trading Engine"
+  version: "1.0.0"
+  author: "Your Name"
+
+# --- Data Settings ---
+data:
+  # Symbols to track
+  symbols:
+    - "AAPL"
+    - "GOOGL"
+    - "MSFT"
+    - "AMZN"
+    - "TSLA"
+    - "SPY"      # S&P 500 ETF (benchmark)
+  
+  # Date range
+  start_date: "2020-01-01"
+  end_date: "2024-12-31"
+  
+  # Timeframe
+  interval: "1d"   # 1d, 1h, 5m, etc.
+  
+  # Storage
+  raw_data_path: "data/raw/"
+  processed_data_path: "data/processed/"
+  cache_path: "data/cache/"
+
+# --- Trading Settings ---
+trading:
+  initial_capital: 100000    # Starting with \$100,000
+  currency: "USD"
+  commission: 0.001          # 0.1% per trade
+  slippage: 0.0005           # 0.05% slippage
+  max_position_size: 0.20    # Max 20% of portfolio per stock
+  risk_per_trade: 0.02       # Risk 2% per trade
+
+# --- Strategy Settings ---
+strategy:
+  default: "sma_crossover"
+  sma_crossover:
+    fast_period: 20
+    slow_period: 50
+  rsi:
+    period: 14
+    overbought: 70
+    oversold: 30
+
+# --- Risk Management ---
+risk:
+  max_drawdown: 0.15         # Stop trading at 15% drawdown
+  stop_loss: 0.05            # 5% stop loss
+  take_profit: 0.10          # 10% take profit
+  max_open_positions: 5
+
+# --- Logging ---
+logging:
+  level: "INFO"
+  log_file: "logs/trading.log"
