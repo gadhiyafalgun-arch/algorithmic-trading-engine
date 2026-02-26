@@ -26,17 +26,10 @@ class Visualizer:
                                  signal_column: str = "sma_signal") -> None:
         """
         Plot candlestick chart with BUY/SELL signals.
-        
-        Args:
-            df: DataFrame with OHLCV data and signals
-            symbol: Stock ticker for title
-            signal_column: Which signal column to plot
         """
-        # Get buy and sell points
         buys = df[df[signal_column] == 1]
         sells = df[df[signal_column] == -1]
 
-        # Create figure with subplots
         fig = make_subplots(
             rows=3, cols=1,
             shared_xaxes=True,
@@ -49,7 +42,7 @@ class Visualizer:
             )
         )
 
-        # --- Row 1: Candlestick + Signals ---
+        # Row 1: Candlestick
         fig.add_trace(
             go.Candlestick(
                 x=df.index,
@@ -64,7 +57,6 @@ class Visualizer:
             row=1, col=1
         )
 
-        # Add SMAs
         if "sma_20" in df.columns:
             fig.add_trace(
                 go.Scatter(
@@ -85,7 +77,6 @@ class Visualizer:
                 row=1, col=1
             )
 
-        # Add Bollinger Bands
         if "bb_upper" in df.columns:
             fig.add_trace(
                 go.Scatter(
@@ -108,7 +99,6 @@ class Visualizer:
                 row=1, col=1
             )
 
-        # BUY signals (green triangles)
         if len(buys) > 0:
             fig.add_trace(
                 go.Scatter(
@@ -126,7 +116,6 @@ class Visualizer:
                 row=1, col=1
             )
 
-        # SELL signals (red triangles)
         if len(sells) > 0:
             fig.add_trace(
                 go.Scatter(
@@ -144,7 +133,7 @@ class Visualizer:
                 row=1, col=1
             )
 
-        # --- Row 2: Volume ---
+        # Row 2: Volume
         colors = ["#26a69a" if c >= o else "#ef5350"
                   for c, o in zip(df["close"], df["open"])]
 
@@ -159,7 +148,7 @@ class Visualizer:
             row=2, col=1
         )
 
-        # --- Row 3: RSI ---
+        # Row 3: RSI
         if "rsi_14" in df.columns:
             fig.add_trace(
                 go.Scatter(
@@ -170,7 +159,6 @@ class Visualizer:
                 row=3, col=1
             )
 
-            # Overbought/Oversold lines
             fig.add_hline(y=70, line_dash="dash", line_color="red",
                          opacity=0.5, row=3, col=1)
             fig.add_hline(y=30, line_dash="dash", line_color="green",
@@ -178,9 +166,8 @@ class Visualizer:
             fig.add_hline(y=50, line_dash="dot", line_color="gray",
                          opacity=0.3, row=3, col=1)
 
-        # --- Layout ---
         fig.update_layout(
-            title=f"🤖 Algo Trading Engine — {symbol}",
+            title=f"Algo Trading Engine — {symbol}",
             template="plotly_dark",
             height=900,
             showlegend=True,
@@ -194,19 +181,16 @@ class Visualizer:
             )
         )
 
-        # Save as HTML
         filepath = os.path.join(self.output_dir, f"{symbol}_{signal_column}.html")
         fig.write_html(filepath)
-        logger.info(f"📊 Chart saved: {filepath}")
-
-        # Also show in browser
+        logger.info(f"Chart saved: {filepath}")
         fig.show()
 
     def plot_strategy_comparison(self, df: pd.DataFrame, symbol: str) -> None:
         """
         Plot all strategy signals on one chart for comparison.
         """
-        signal_cols = [col for col in df.columns 
+        signal_cols = [col for col in df.columns
                       if "signal" in col.lower() and df[col].abs().sum() > 0]
 
         fig = make_subplots(
@@ -217,7 +201,6 @@ class Visualizer:
             subplot_titles=[f"{symbol} Price"] + signal_cols
         )
 
-        # Price chart
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df["close"],
@@ -227,12 +210,10 @@ class Visualizer:
             row=1, col=1
         )
 
-        # Each strategy signal
         colors = ["#00e676", "#2196f3", "#ff9800", "#e91e63", "#9c27b0"]
 
         for i, col in enumerate(signal_cols):
             color = colors[i % len(colors)]
-
             fig.add_trace(
                 go.Bar(
                     x=df.index,
@@ -245,7 +226,7 @@ class Visualizer:
             )
 
         fig.update_layout(
-            title=f"🔍 Strategy Comparison — {symbol}",
+            title=f"Strategy Comparison — {symbol}",
             template="plotly_dark",
             height=200 + (200 * len(signal_cols)),
             showlegend=True,
@@ -254,7 +235,7 @@ class Visualizer:
 
         filepath = os.path.join(self.output_dir, f"{symbol}_comparison.html")
         fig.write_html(filepath)
-        logger.info(f"📊 Comparison chart saved: {filepath}")
+        logger.info(f"Comparison chart saved: {filepath}")
         fig.show()
 
     def plot_macd(self, df: pd.DataFrame, symbol: str) -> None:
@@ -269,7 +250,6 @@ class Visualizer:
             subplot_titles=(f"{symbol} Price", "MACD")
         )
 
-        # Price
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df["close"],
@@ -279,7 +259,6 @@ class Visualizer:
             row=1, col=1
         )
 
-        # MACD Line
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df["macd_line"],
@@ -289,7 +268,6 @@ class Visualizer:
             row=2, col=1
         )
 
-        # Signal Line
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df["macd_signal"],
@@ -299,8 +277,7 @@ class Visualizer:
             row=2, col=1
         )
 
-        # Histogram
-        colors = ["#26a69a" if v >= 0 else "#ef5350" 
+        colors = ["#26a69a" if v >= 0 else "#ef5350"
                   for v in df["macd_histogram"]]
         fig.add_trace(
             go.Bar(
@@ -313,7 +290,7 @@ class Visualizer:
         )
 
         fig.update_layout(
-            title=f"📈 MACD Analysis — {symbol}",
+            title=f"MACD Analysis — {symbol}",
             template="plotly_dark",
             height=700,
             showlegend=True
@@ -321,5 +298,155 @@ class Visualizer:
 
         filepath = os.path.join(self.output_dir, f"{symbol}_macd.html")
         fig.write_html(filepath)
-        logger.info(f"📊 MACD chart saved: {filepath}")
+        logger.info(f"MACD chart saved: {filepath}")
+        fig.show()
+
+    def plot_backtest_results(self, portfolio_df: pd.DataFrame,
+                               trades_df: pd.DataFrame,
+                               symbol: str, strategy: str,
+                               initial_capital: float) -> None:
+        """
+        Plot comprehensive backtest results.
+        """
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            row_heights=[0.5, 0.25, 0.25],
+            subplot_titles=(
+                f"Portfolio Value — {symbol} ({strategy})",
+                "Daily Returns",
+                "Drawdown"
+            )
+        )
+
+        # Row 1: Portfolio Value
+        fig.add_trace(
+            go.Scatter(
+                x=portfolio_df.index,
+                y=portfolio_df["total_value"],
+                name="Portfolio Value",
+                line=dict(color="#00e676", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(0, 230, 118, 0.1)"
+            ),
+            row=1, col=1
+        )
+
+        fig.add_hline(
+            y=initial_capital,
+            line_dash="dash",
+            line_color="white",
+            opacity=0.5,
+            annotation_text=f"Initial: ${initial_capital:,.0f}",
+            row=1, col=1
+        )
+
+        if not trades_df.empty:
+            for _, trade in trades_df.iterrows():
+                if trade["entry_date"] in portfolio_df.index:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[trade["entry_date"]],
+                            y=[portfolio_df.loc[trade["entry_date"], "total_value"]],
+                            mode="markers",
+                            marker=dict(symbol="triangle-up", size=8, color="#00e676"),
+                            showlegend=False
+                        ),
+                        row=1, col=1
+                    )
+
+        # Row 2: Daily Returns
+        colors = ["#26a69a" if r >= 0 else "#ef5350"
+                  for r in portfolio_df["daily_return"]]
+
+        fig.add_trace(
+            go.Bar(
+                x=portfolio_df.index,
+                y=portfolio_df["daily_return"] * 100,
+                name="Daily Return %",
+                marker_color=colors,
+                opacity=0.7
+            ),
+            row=2, col=1
+        )
+
+        # Row 3: Drawdown
+        cumulative = (1 + portfolio_df["daily_return"]).cumprod()
+        running_max = cumulative.cummax()
+        drawdown = (cumulative - running_max) / running_max * 100
+
+        fig.add_trace(
+            go.Scatter(
+                x=portfolio_df.index,
+                y=drawdown,
+                name="Drawdown %",
+                line=dict(color="#ef5350", width=1),
+                fill="tozeroy",
+                fillcolor="rgba(239, 83, 80, 0.2)"
+            ),
+            row=3, col=1
+        )
+
+        fig.update_layout(
+            title=f"Backtest Results — {symbol} | {strategy}",
+            template="plotly_dark",
+            height=900,
+            showlegend=True
+        )
+
+        fig.update_yaxes(title_text="Value ($)", row=1, col=1)
+        fig.update_yaxes(title_text="Return (%)", row=2, col=1)
+        fig.update_yaxes(title_text="Drawdown (%)", row=3, col=1)
+
+        filepath = os.path.join(self.output_dir, f"{symbol}_{strategy}_backtest.html")
+        fig.write_html(filepath)
+        logger.info(f"Backtest chart saved: {filepath}")
+        fig.show()
+
+    def plot_equity_comparison(self, all_results: dict, symbol: str) -> None:
+        """
+        Compare equity curves of all strategies.
+        """
+        fig = go.Figure()
+
+        colors = ["#00e676", "#2196f3", "#ff9800", "#e91e63", "#9c27b0",
+                  "#00bcd4", "#ffeb3b", "#4caf50"]
+
+        initial_capital = 100000
+
+        for i, (strategy_name, results) in enumerate(all_results.items()):
+            portfolio_df = results["portfolio_history"]
+            color = colors[i % len(colors)]
+            initial_capital = results["initial_capital"]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=portfolio_df.index,
+                    y=portfolio_df["total_value"],
+                    name=strategy_name,
+                    line=dict(color=color, width=2)
+                )
+            )
+
+        fig.add_hline(
+            y=initial_capital,
+            line_dash="dash",
+            line_color="white",
+            opacity=0.3,
+            annotation_text="Initial Capital"
+        )
+
+        fig.update_layout(
+            title=f"Strategy Equity Comparison — {symbol}",
+            template="plotly_dark",
+            height=600,
+            xaxis_title="Date",
+            yaxis_title="Portfolio Value ($)",
+            showlegend=True
+        )
+
+        filepath = os.path.join(self.output_dir, f"{symbol}_equity_comparison.html")
+        fig.write_html(filepath)
+        logger.info(f"Equity comparison saved: {filepath}")
         fig.show()
