@@ -252,36 +252,80 @@ class PortfolioManager:
                 del positions[s]
 
             # ===== CHECK FOR NEW BUY SIGNALS =====
-            for symbol, df in all_data.items():
-                if date not in df.index:
-                    continue
-                if symbol in positions:
-                    continue  # Already holding
+                        # ===== CHECK FOR NEW BUY SIGNALS =====
+            
+            # Do portfolio risk check ONCE per day (not per stock)
+            holdings_value = sum(
+                all_data[s].loc[date, "close"] * p.shares
+                for s, p in positions.items()
+                if date in all_data[s].index
+            )
+            total_value = cash + holdings_value
+            peak_capital = max(peak_capital, total_value)
 
-                row = df.loc[date]
-                signal = row.get(signal_column, 0)
+            risk_check = self.risk_manager.check_portfolio_risk(
+                total_value, peak_capital, len(positions)
+            )
 
-                if signal != 1:
-                    continue  # No buy signal
-
-                # Portfolio risk check
-                holdings_value = sum(
-                    all_data[s].loc[date, "close"] * p.shares
-                    for s, p in positions.items()
-                    if date in all_data[s].index
-                )
-                total_value = cash + holdings_value
-                peak_capital = max(peak_capital, total_value)
-
-                risk_check = self.risk_manager.check_portfolio_risk(
-                    total_value, peak_capital, len(positions)
-                )
-
-                if not risk_check["can_trade"]:
+            if not risk_check["can_trade"]:
+                # Log ONCE per day, not per stock
+                if not hasattr(self, '_last_halt_date') or self._last_halt_date != date:
                     for warning in risk_check["warnings"]:
                         logger.warning(f"⚠️ {warning}")
-                    continue
+                    self._last_halt_date = date
+            else:
+                for symbol, df in all_data.items():
+                    if date not in df.index:
+                        continue
+                    if symbol in positions:
+                        continue
 
+                    row = df.loc[date]
+                    signal = row.get(signal_column, 0)
+
+                    if signal != 1:
+                        continue
+
+                    # Calculate position size
+                    entry_price = row["close"] * (1 + self.slippage_rate)
+                    atr = row.get("atr_14", entry_price * 0.02)
+
+                    shares = self.risk_manager.volatility_based_size(
+                        cash, entry_price, atr
+                    )
+
+                    if shares <= 0:
+                        continue
+
+                    total_cost = shares * entry_price * (1 + self.commission_rate)
+                    if total_cost > cash:
+                        shares = int(cash / (entry_price * (1 + self.commission_rate)))
+                        total_cost = shares * entry_price * (1 + self.commission_rate)
+
+                    if shares <= 0:
+                        continue
+
+                    stop_loss = self.risk_manager.calculate_atr_stop_loss(
+                        entry_price, atr, multiplier=2.0
+                    )
+                    take_profit = entry_price * (1 + self.risk_manager.take_profit_pct)
+
+                    cash -= total_cost
+
+                    positions[symbol] = Position(
+                        symbol=symbol,
+                        entry_date=date,
+                        entry_price=entry_price,
+                        shares=shares,
+                        stop_loss=stop_loss,
+                        take_profit=take_profit,
+                        highest_price=entry_price,
+                        sizing_method="volatility"
+                    )
+
+                    logger.info(f"🟢 BUY {symbol}: {date.strftime('%Y-%m-%d')} | "
+                              f"Price: ${entry_price:.2f} | Shares: {shares} | "
+                              f"SL: ${stop_loss:.2f} | TP: ${take_profit:.2f}")
                 # Calculate position size
                 entry_price = row["close"] * (1 + self.slippage_rate)
                 atr = row.get("atr_14", entry_price * 0.02)
